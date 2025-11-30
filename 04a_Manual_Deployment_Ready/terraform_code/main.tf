@@ -4,10 +4,10 @@
 
 module "frontend-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.20.1"
-  project_id                    = "sdlc-468305"
-  location                      = "us-central1"
-  service_name                  = "genai-frontend"
-  containers                    = [{"container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "frontend-container", "env_vars" = {"backend_service_SERVICE_ENDPOINT" = module.backend-service.service_uri}}]
+  project_id                    = var.project_id
+  location                      = var.location
+  service_name                  = var.frontend_service_name
+  containers                    = [{"container_image" = var.frontend_image_name, "container_name" = "frontend-container", "env_vars" = {"backend_service_SERVICE_ENDPOINT" = module.backend-service.service_uri}}]
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
     egress = "ALL_TRAFFIC"
@@ -29,10 +29,10 @@ module "frontend-service" {
 }
 module "backend-service" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.20.1"
-  project_id                    = "sdlc-468305"
-  location                      = "us-central1"
-  service_name                  = "genai-backend"
-  containers                    = [{"container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "backend-container"}]
+  project_id                    = var.project_id
+  location                      = var.location
+  service_name                  = var.backend_service_name
+  containers                    = [{"container_image" = var.backend_image_name, "container_name" = "backend-container"}]
   service_account_project_roles = ["roles/aiplatform.user", "roles/secretmanager.secretAccessor"]
   vpc_access = {
     egress = "ALL_TRAFFIC"
@@ -57,28 +57,28 @@ module "backend-service" {
 }
 module "imagen-vertex-ai" {
   source        = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v18.0.0"
-  project_id    = "sdlc-468305"
+  project_id    = var.project_id
   activate_apis = ["aiplatform.googleapis.com"]
   depends_on    = [module.project-services-sdlc-468305, module.project-services-billing-project]
 }
 module "generated-images-bucket" {
   source        = "github.com/terraform-google-modules/terraform-google-cloud-storage//modules/simple_bucket?ref=v10.0.2"
-  project_id    = "sdlc-468305"
-  location      = "us-central1"
-  name          = "genai-story-images"
+  project_id    = var.project_id
+  location      = var.location
+  name          = var.bucket_name
   iam_members   = concat([{"role" = "roles/storage.objectAdmin", "member" = module.frontend-service.service_account_id.member}], [{"member" = module.backend-service.service_account_id.member, "role" = "roles/storage.objectAdmin"}])
   storage_class = "STANDARD"
   depends_on    = [module.project-services-sdlc-468305, module.project-services-billing-project]
 }
 module "project-services-sdlc-468305" {
   source                      = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v17.1.0"
-  project_id                  = "sdlc-468305"
+  project_id                  = var.project_id
   disable_services_on_destroy = false
   activate_apis               = []
 }
 module "project-services-billing-project" {
   source                      = "github.com/terraform-google-modules/terraform-google-project-factory//modules/project_services?ref=v17.1.0"
-  project_id                  = "sdlc-468305"
+  project_id                  = var.project_id
   disable_services_on_destroy = false
   activate_apis               = ["apphub.googleapis.com", "cloudresourcemanager.googleapis.com"]
 }

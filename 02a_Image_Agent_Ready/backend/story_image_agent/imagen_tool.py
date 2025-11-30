@@ -62,9 +62,16 @@ class ImagenTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "prompt": {
+                "scene_description": {
                     "type": "string",
-                    "description": "Detailed text description of the image to generate"
+                    "description": "Detailed text description of the scene to generate an image for"
+                },
+                "character_descriptions": {
+                    "type": "object",
+                    "description": "A dictionary of character names to their descriptions, e.g., {'Alice': 'a young girl with red hair'}",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "negative_prompt": {
                     "type": "string", 
@@ -85,24 +92,27 @@ class ImagenTool(BaseTool):
                     "default": 1
                 }
             },
-            "required": ["prompt"]
+            "required": ["scene_description"]
         }
     
     async def run(self, ctx: ToolContext, **kwargs) -> str:
         """Generate an image using Vertex AI Imagen and store in GCS bucket."""
         try:
-            prompt = kwargs.get("prompt", "")
-            negative_prompt = kwargs.get(
-                "negative_prompt",
-                "photorealistic, realistic, blurry, low quality, watermark, text overlay"
-            )
-            aspect_ratio = kwargs.get("aspect_ratio", "16:9")
-            number_of_images = kwargs.get("number_of_images", 1)
+            scene_description = kwargs.get("scene_description", "")
+            character_descriptions = kwargs.get("character_descriptions", {})
             
-            if not prompt.strip():
+            if not scene_description.strip():
                 return json.dumps({
-                    "error": "Prompt is required for image generation"
+                    "error": "Scene description is required for image generation"
                 })
+            
+            # Construct the prompt for Imagen
+            prompt_parts = [scene_description]
+            if character_descriptions:
+                char_details = ", ".join([f"{name}: {desc}" for name, desc in character_descriptions.items()])
+                prompt_parts.append(f"Characters: {char_details}")
+            
+            prompt = ". ".join(prompt_parts)
             
             # Apply strict cartoon style prefix
             style_prefix = (

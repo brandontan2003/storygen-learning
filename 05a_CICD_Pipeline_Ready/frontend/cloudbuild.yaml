@@ -1,14 +1,46 @@
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
+  # Build the container image
+  - name: "gcr.io/cloud-builders/docker"
     args:
-      - 'build'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_BACKEND_URL=${_BACKEND_URL}'
-      - '-t'
-      - '${_IMAGE_NAME}'
-      - '.'
+      [
+        "build",
+        "--build-arg",
+        "NEXT_PUBLIC_BACKEND_URL=${_BACKEND_URL}",
+        "-t",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/storygen/storygen-frontend:$SHORT_SHA",
+        ".",
+      ]
+
+  # Push the container image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/storygen/storygen-frontend:$SHORT_SHA",
+      ]
+
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      [
+        "run",
+        "deploy",
+        "storygen-frontend",
+        "--image",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/storygen/storygen-frontend:$SHORT_SHA",
+        "--region",
+        "us-central1",
+        "--platform",
+        "managed",
+        "--allow-unauthenticated",
+      ]
+
+# Store the image in Artifact Registry
 images:
-  - '${_IMAGE_NAME}'
-substitutions:
-  _BACKEND_URL: 'http://localhost:8000'  # Default fallback
-  _IMAGE_NAME: 'gcr.io/${PROJECT_ID}/storygen-frontend'
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/storygen/storygen-frontend:$SHORT_SHA"
+
+# Available substitutions: https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values
+# _BACKEND_URL is a user-defined substitution
+options:
+  logging: CLOUD_LOGGING_ONLY

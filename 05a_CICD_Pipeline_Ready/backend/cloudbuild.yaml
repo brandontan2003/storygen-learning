@@ -1,0 +1,29 @@
+steps:
+  # Trigger the backend build
+  - name: "gcr.io/cloud-builders/gcloud"
+    args:
+      [
+        "builds",
+        "submit",
+        "--config=backend/cloudbuild.yaml",
+        "--substitutions=_GENMEDIA_BUCKET=${_GENMEDIA_BUCKET}",
+      ]
+
+  # Trigger the frontend build
+  - name: "gcr.io/cloud-builders/gcloud"
+    args:
+      [
+        "builds",
+        "submit",
+        "--config=frontend/cloudbuild.yaml",
+        "--substitutions=_BACKEND_URL=${_BACKEND_URL}",
+      ]
+
+# Available substitutions: https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values
+# _GENMEDIA_BUCKET and _BACKEND_URL are user-defined substitutions
+substitutions:
+  _GENMEDIA_BUCKET: "default-bucket"
+  _BACKEND_URL: "http://localhost:8000"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
